@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="alfagr_manager"
+        android:label="إدارة النادي القرآني"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
