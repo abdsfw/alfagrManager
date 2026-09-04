@@ -622,7 +622,7 @@ Widget _nameCell(
   required VoidCallback onDelete,
 }) {
   return SizedBox(
-    height: height,
+    // height: height,
     child: Card(
       margin: const EdgeInsets.all(2),
       child: Padding(
@@ -632,7 +632,7 @@ Widget _nameCell(
             Expanded(
               child: Text(
                 student['full_name'] as String? ?? '',
-                overflow: TextOverflow.ellipsis,
+                // overflow: TextOverflow.ellipsis,
               ),
             ),
             PopupMenuButton<String>(
