@@ -105,7 +105,9 @@ Future<void> _showAttendanceDialog(
                 onChanged: (value) {
                   setState(() {
                     status = value ?? 'حاضر';
-                    pointsController.text = _defaultPointsForStatus(status).toString();
+                    pointsController.text = _defaultPointsForStatus(
+                      status,
+                    ).toString();
                   });
                 },
               ),
