@@ -31,21 +31,32 @@ class WorkDayDetailsPage extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             children: [
               for (final student in state.students)
-                Card(
-                  child: ListTile(
-                    title: Text(student['full_name'] as String? ?? ''),
-                    subtitle: Text(
-                      attendanceMap[student['id']] == null
-                          ? 'لم يتم الإدخال بعد'
-                          : '${attendanceMap[student['id']]!['status']} / ${attendanceMap[student['id']]!['points']}',
-                    ),
-                    onTap: () => _showAttendanceDialog(
-                      context,
-                      student: student,
-                      workDay: workDay,
-                      oldValue: attendanceMap[student['id'] as int],
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    final attendance = attendanceMap[student['id'] as int];
+                    final reason = attendance?['absence_reason'] as String?;
+                    return Card(
+                      child: ListTile(
+                        title: Text(student['full_name'] as String? ?? ''),
+                        subtitle: Text(
+                          attendance == null
+                              ? 'لم يتم الإدخال بعد'
+                              : [
+                                  '${attendance['status']} / ${attendance['points']}',
+                                  if (reason != null &&
+                                      reason.trim().isNotEmpty)
+                                    'السبب: ${reason.trim()}',
+                                ].join('\n'),
+                        ),
+                        onTap: () => _showAttendanceDialog(
+                          context,
+                          student: student,
+                          workDay: workDay,
+                          oldValue: attendance,
+                        ),
+                      ),
+                    );
+                  },
                 ),
             ],
           );
@@ -62,51 +73,87 @@ Future<void> _showAttendanceDialog(
   Map<String, dynamic>? oldValue,
 }) async {
   String status = oldValue?['status'] as String? ?? 'حاضر';
-  final pointsController = TextEditingController(text: (oldValue?['points'] ?? 0).toString());
+  final pointsController = TextEditingController(
+    text: (oldValue?['points'] ?? _defaultPointsForStatus(status)).toString(),
+  );
+  final reasonController = TextEditingController(
+    text: oldValue?['absence_reason'] as String? ?? '',
+  );
   final formKey = GlobalKey<FormState>();
 
   final saved = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(student['full_name'] as String? ?? ''),
-      content: Form(
-        key: formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: status,
-              decoration: const InputDecoration(labelText: 'الحالة'),
-              items: const [
-                DropdownMenuItem(value: 'حاضر', child: Text('حاضر')),
-                DropdownMenuItem(value: 'غائب', child: Text('غائب')),
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: Text(student['full_name'] as String? ?? ''),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: status,
+                decoration: const InputDecoration(labelText: 'الحالة'),
+                items: const [
+                  DropdownMenuItem(value: 'حاضر', child: Text('حاضر')),
+                  DropdownMenuItem(value: 'غائب', child: Text('غائب')),
+                  DropdownMenuItem(
+                    value: 'غائب بعذر',
+                    child: Text('غائب بعذر'),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    status = value ?? 'حاضر';
+                    pointsController.text = _defaultPointsForStatus(status).toString();
+                  });
+                },
+              ),
+              if (status == 'غائب بعذر') ...[
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(labelText: 'سبب الغياب'),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'اكتب سبب الغياب';
+                    }
+                    return null;
+                  },
+                ),
               ],
-              onChanged: (value) => status = value ?? 'حاضر',
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: pointsController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'النقاط'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'هذا الحقل مطلوب';
-                if (int.tryParse(value.trim()) == null) return 'أدخل رقمًا صحيحًا';
-                return null;
-              },
-            ),
-          ],
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: pointsController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'النقاط'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'هذا الحقل مطلوب';
+                  }
+                  if (int.tryParse(value.trim()) == null) {
+                    return 'أدخل رقمًا صحيحًا';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.pop(dialogContext, true);
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
-        FilledButton(
-          onPressed: () {
-            if (!formKey.currentState!.validate()) return;
-            Navigator.pop(dialogContext, true);
-          },
-          child: const Text('حفظ'),
-        ),
-      ],
     ),
   );
 
@@ -116,6 +163,24 @@ Future<void> _showAttendanceDialog(
       workdayId: workDay['id'] as int,
       status: status,
       points: int.parse(pointsController.text.trim()),
+      absenceReason: status == 'غائب بعذر'
+          ? reasonController.text.trim()
+          : null,
     );
+  }
+
+  pointsController.dispose();
+  reasonController.dispose();
+}
+
+int _defaultPointsForStatus(String status) {
+  switch (status) {
+    case 'غائب':
+      return -5;
+    case 'غائب بعذر':
+      return 0;
+    case 'حاضر':
+    default:
+      return 5;
   }
 }

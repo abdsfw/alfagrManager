@@ -12,7 +12,7 @@ class DatabaseHelper {
     final dbPath = await sql.getDatabasesPath();
     _database = await sql.openDatabase(
       p.join(dbPath, 'halaqa_manager.db'),
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -45,6 +45,7 @@ class DatabaseHelper {
             workday_id INTEGER NOT NULL,
             status TEXT NOT NULL,
             points INTEGER NOT NULL DEFAULT 0,
+            absence_reason TEXT,
             UNIQUE(student_id, workday_id),
             FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
             FOREIGN KEY(workday_id) REFERENCES work_days(id) ON DELETE CASCADE
@@ -79,6 +80,11 @@ class DatabaseHelper {
         ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 3) {
+          await db.execute(
+            'ALTER TABLE attendance ADD COLUMN absence_reason TEXT',
+          );
+        }
         if (oldVersion < 2) {
           await db.execute('''
             CREATE TABLE IF NOT EXISTS test_subjects (
@@ -121,11 +127,11 @@ class DatabaseHelper {
 
   Future<void> upsertTeacher(String teacherName, String halaqaName) async {
     final db = await database;
-    await db.insert(
-      'teacher',
-      {'id': 1, 'teacher_name': teacherName, 'halaqa_name': halaqaName},
-      conflictAlgorithm: sql.ConflictAlgorithm.replace,
-    );
+    await db.insert('teacher', {
+      'id': 1,
+      'teacher_name': teacherName,
+      'halaqa_name': halaqaName,
+    }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getStudents() async {
@@ -140,7 +146,12 @@ class DatabaseHelper {
 
   Future<void> updateStudent(int id, String fullName) async {
     final db = await database;
-    await db.update('students', {'full_name': fullName}, where: 'id = ?', whereArgs: [id]);
+    await db.update(
+      'students',
+      {'full_name': fullName},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<void> deleteStudent(int id) async {
@@ -183,18 +194,16 @@ class DatabaseHelper {
     required int workdayId,
     required String status,
     required int points,
+    String? absenceReason,
   }) async {
     final db = await database;
-    await db.insert(
-      'attendance',
-      {
-        'student_id': studentId,
-        'workday_id': workdayId,
-        'status': status,
-        'points': points,
-      },
-      conflictAlgorithm: sql.ConflictAlgorithm.replace,
-    );
+    await db.insert('attendance', {
+      'student_id': studentId,
+      'workday_id': workdayId,
+      'status': status,
+      'points': points,
+      'absence_reason': absenceReason,
+    }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getTestSubjects() async {
@@ -209,7 +218,12 @@ class DatabaseHelper {
 
   Future<void> updateTestSubject(int id, String name) async {
     final db = await database;
-    await db.update('test_subjects', {'name': name}, where: 'id = ?', whereArgs: [id]);
+    await db.update(
+      'test_subjects',
+      {'name': name},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<void> deleteTestSubject(int id) async {
@@ -271,10 +285,10 @@ class DatabaseHelper {
     required double score,
   }) async {
     final db = await database;
-    await db.insert(
-      'test_scores',
-      {'student_id': studentId, 'test_day_id': testDayId, 'score': score},
-      conflictAlgorithm: sql.ConflictAlgorithm.replace,
-    );
+    await db.insert('test_scores', {
+      'student_id': studentId,
+      'test_day_id': testDayId,
+      'score': score,
+    }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
   }
 }

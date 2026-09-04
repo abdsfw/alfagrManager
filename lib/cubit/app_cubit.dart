@@ -66,7 +66,9 @@ class AppCubit extends Cubit<AppState> {
       await _reloadData();
       return true;
     } on sql.DatabaseException {
-      emit(state.copyWith(errorMessage: 'لا يمكن تكرار نفس اليوم مع نفس التاريخ'));
+      emit(
+        state.copyWith(errorMessage: 'لا يمكن تكرار نفس اليوم مع نفس التاريخ'),
+      );
       return false;
     }
   }
@@ -77,7 +79,9 @@ class AppCubit extends Cubit<AppState> {
       await _reloadData();
       return true;
     } on sql.DatabaseException {
-      emit(state.copyWith(errorMessage: 'لا يمكن تكرار نفس اليوم مع نفس التاريخ'));
+      emit(
+        state.copyWith(errorMessage: 'لا يمكن تكرار نفس اليوم مع نفس التاريخ'),
+      );
       return false;
     }
   }
@@ -92,12 +96,14 @@ class AppCubit extends Cubit<AppState> {
     required int workdayId,
     required String status,
     required int points,
+    String? absenceReason,
   }) async {
     await _db.upsertAttendance(
       studentId: studentId,
       workdayId: workdayId,
       status: status,
       points: points,
+      absenceReason: absenceReason,
     );
     await _reloadData();
   }
@@ -139,7 +145,9 @@ class AppCubit extends Cubit<AppState> {
       await _reloadData();
       return true;
     } on sql.DatabaseException {
-      emit(state.copyWith(errorMessage: 'يوجد اختبار لنفس المادة في نفس التاريخ'));
+      emit(
+        state.copyWith(errorMessage: 'يوجد اختبار لنفس المادة في نفس التاريخ'),
+      );
       return false;
     }
   }
@@ -151,11 +159,18 @@ class AppCubit extends Cubit<AppState> {
     required String date,
   }) async {
     try {
-      await _db.updateTestDay(id: id, subjectId: subjectId, dayName: dayName, date: date);
+      await _db.updateTestDay(
+        id: id,
+        subjectId: subjectId,
+        dayName: dayName,
+        date: date,
+      );
       await _reloadData();
       return true;
     } on sql.DatabaseException {
-      emit(state.copyWith(errorMessage: 'يوجد اختبار لنفس المادة في نفس التاريخ'));
+      emit(
+        state.copyWith(errorMessage: 'يوجد اختبار لنفس المادة في نفس التاريخ'),
+      );
       return false;
     }
   }
@@ -170,7 +185,11 @@ class AppCubit extends Cubit<AppState> {
     required int testDayId,
     required double score,
   }) async {
-    await _db.upsertTestScore(studentId: studentId, testDayId: testDayId, score: score);
+    await _db.upsertTestScore(
+      studentId: studentId,
+      testDayId: testDayId,
+      score: score,
+    );
     await _reloadData();
   }
 
